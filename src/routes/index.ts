@@ -13,6 +13,8 @@ import categoriesRoutes from '../modules/categories/categories.routes';
 import servicesRoutes from '../modules/services/services.routes';
 import providersRoutes from '../modules/providers/providers.routes';
 import bookingsRoutes from '../modules/bookings/bookings.routes';
+import chatRoutes from '../modules/chat/chat.routes';
+import notificationsRoutes from '../modules/notifications/notifications.routes';
 // Phase 4+:
 // import paymentsRoutes from '../modules/payments/payments.routes';
 // import reviewsRoutes from '../modules/reviews/reviews.routes';
@@ -20,12 +22,14 @@ import bookingsRoutes from '../modules/bookings/bookings.routes';
 const router = Router();
 
 // ─── Mount routes ───────────────────────────────────────────────────────────
-// /api/auth/...        → auth routes
-// /api/users/...       → user profile & addresses
-// /api/categories/...  → service categories
-// /api/services/...    → service listings + search
-// /api/providers/...   → provider profiles + search
-// /api/bookings/...    → booking management
+// /api/auth/...              → auth routes
+// /api/users/...             → user profile & addresses
+// /api/categories/...        → service categories
+// /api/services/...          → service listings + search
+// /api/providers/...         → provider profiles + search
+// /api/bookings/...          → booking management
+// /api/chat/...              → chat history (real-time via Socket.io)
+// /api/notifications/...     → in-app notifications
 
 router.use('/auth', authRoutes);
 router.use('/users', usersRoutes);
@@ -33,6 +37,8 @@ router.use('/categories', categoriesRoutes);
 router.use('/services', servicesRoutes);
 router.use('/providers', providersRoutes);
 router.use('/bookings', bookingsRoutes);
+router.use('/chat', chatRoutes);
+router.use('/notifications', notificationsRoutes);
 
 // Health check — quick way to check if API is running
 router.get('/health', (req, res) => {

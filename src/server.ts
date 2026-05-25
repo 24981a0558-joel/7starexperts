@@ -12,6 +12,8 @@ import { Server as SocketServer } from 'socket.io';
 import app from './app';
 import { env } from './config/env';
 import prisma from './config/database';
+import { socketAuthMiddleware } from './socket/socket.middleware';
+import { registerSocketGateway } from './socket/socket.gateway';
 
 // Create HTTP server from Express app
 // We need the raw HTTP server (not just Express) to attach Socket.io
@@ -21,58 +23,31 @@ const httpServer = createServer(app);
 // SOCKET.IO SETUP
 // ─────────────────────────────────────────────────────────────────────────────
 // 📘 Socket.io enables real-time bidirectional communication.
-// Unlike HTTP (request → response → done), WebSockets stay open.
-// Used for: live chat, real-time location tracking, instant notifications.
+// Unlike HTTP (request → response → done), WebSockets keep a persistent
+// connection open (WebSocket protocol).
+// Used for: live chat, real-time location tracking, live notifications.
 // ─────────────────────────────────────────────────────────────────────────────
 const io = new SocketServer(httpServer, {
   cors: {
     origin: [env.CUSTOMER_APP_URL, env.ADMIN_PANEL_URL, '*'],
     methods: ['GET', 'POST'],
+    credentials: true,
   },
-  // pingTimeout — how long to wait before disconnecting (ms)
-  pingTimeout: 60000,
+  pingTimeout: 60000,   // disconnect if no response in 60s
+  pingInterval: 25000,  // ping every 25s to keep connection alive
 });
 
-// Socket.io connection handler
-io.on('connection', (socket) => {
-  console.log(`🔌 Socket connected: ${socket.id}`);
+// 1. Apply auth middleware to ALL socket connections
+//    Every connection must have a valid JWT token
+io.use(socketAuthMiddleware as any);
 
-  // ── Join a booking room ──────────────────────────────────────────────────
-  // When a booking starts, customer + provider join the same "room"
-  // Messages/location updates are sent only to that room
-  socket.on('join_booking', (bookingId: string) => {
-    socket.join(`booking_${bookingId}`);
-    console.log(`👥 Socket ${socket.id} joined booking_${bookingId}`);
-  });
+// 2. Register all socket event handlers
+//    Chat, location, booking events all wired up in the gateway
+registerSocketGateway(io);
 
-  // ── Chat message ──────────────────────────────────────────────────────────
-  // Provider or customer sends a message
-  socket.on('send_message', (data: { bookingId: string; message: string; senderId: string }) => {
-    // Broadcast to everyone in the booking room except sender
-    socket.to(`booking_${data.bookingId}`).emit('new_message', {
-      ...data,
-      timestamp: new Date().toISOString(),
-    });
-  });
-
-  // ── Location update ───────────────────────────────────────────────────────
-  // Provider sends their GPS coordinates every few seconds
-  socket.on('update_location', (data: { bookingId: string; lat: number; lng: number }) => {
-    socket.to(`booking_${data.bookingId}`).emit('location_updated', {
-      lat: data.lat,
-      lng: data.lng,
-      timestamp: new Date().toISOString(),
-    });
-  });
-
-  // ── Disconnect ────────────────────────────────────────────────────────────
-  socket.on('disconnect', () => {
-    console.log(`🔌 Socket disconnected: ${socket.id}`);
-  });
-});
-
-// Make io accessible in routes (for sending real-time events from controllers)
-// Usage in controller: req.app.get('io').to('booking_123').emit('event', data)
+// 3. Make io accessible anywhere via req.app.get('io')
+//    Use this in controllers to push real-time events to clients
+//    Example: req.app.get('io').to('user_abc123').emit('booking_update', data)
 app.set('io', io);
 
 // ─────────────────────────────────────────────────────────────────────────────

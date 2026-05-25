@@ -22,6 +22,7 @@
 import prisma from '../../config/database';
 import { AppError } from '../../middleware/error.middleware';
 import { BookingStatus } from '@prisma/client';
+import notificationsService from '../notifications/notifications.service';
 
 // Platform commission rate (15%)
 const PLATFORM_FEE_PERCENTAGE = 0.15;
@@ -90,8 +91,17 @@ export class BookingsService {
       },
     });
 
-    // 6. TODO (Phase 3): Send push notification to provider
-    // await notificationService.notifyProvider(providerId, booking)
+    // 6. Send push notification to provider (if a specific provider was chosen)
+    if (data.providerId) {
+      const provider = await prisma.provider.findUnique({
+        where: { id: data.providerId },
+        select: { userId: true },
+      });
+      if (provider) {
+        // Fire-and-forget — don't await, don't block booking creation
+        notificationsService.notifyNewBooking(provider.userId, booking).catch(console.error);
+      }
+    }
 
     return booking;
   }
@@ -257,8 +267,33 @@ export class BookingsService {
       });
     }
 
-    // TODO (Phase 3): Send push notification about status change
-    // await notificationService.sendBookingUpdate(booking.customerId, updated)
+    // ── Send push notification based on new status ─────────────────────────
+    const fullBooking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        service: { select: { name: true } },
+        provider: { select: { userId: true, user: { select: { name: true } } } },
+      },
+    });
+
+    if (fullBooking) {
+      switch (data.status) {
+        case 'ACCEPTED':
+          notificationsService.notifyBookingAccepted(fullBooking.customerId, fullBooking).catch(console.error);
+          break;
+        case 'REJECTED':
+          notificationsService.notifyBookingRejected(fullBooking.customerId, fullBooking).catch(console.error);
+          break;
+        case 'EN_ROUTE':
+          if (fullBooking.provider?.user?.name) {
+            notificationsService.notifyProviderEnRoute(fullBooking.customerId, fullBooking.provider.user.name, bookingId).catch(console.error);
+          }
+          break;
+        case 'COMPLETED':
+          notificationsService.notifyBookingCompleted(fullBooking.customerId, fullBooking).catch(console.error);
+          break;
+      }
+    }
 
     return updated;
   }
