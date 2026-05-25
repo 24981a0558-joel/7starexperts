@@ -15,9 +15,8 @@ import providersRoutes from '../modules/providers/providers.routes';
 import bookingsRoutes from '../modules/bookings/bookings.routes';
 import chatRoutes from '../modules/chat/chat.routes';
 import notificationsRoutes from '../modules/notifications/notifications.routes';
-// Phase 4+:
-// import paymentsRoutes from '../modules/payments/payments.routes';
-// import reviewsRoutes from '../modules/reviews/reviews.routes';
+import paymentsRoutes from '../modules/payments/payments.routes';
+import reviewsRoutes from '../modules/reviews/reviews.routes';
 
 const router = Router();
 
@@ -30,6 +29,8 @@ const router = Router();
 // /api/bookings/...          → booking management
 // /api/chat/...              → chat history (real-time via Socket.io)
 // /api/notifications/...     → in-app notifications
+// /api/payments/...          → Razorpay payments, webhook, refunds
+// /api/reviews/...           → ratings & reviews
 
 router.use('/auth', authRoutes);
 router.use('/users', usersRoutes);
@@ -39,6 +40,8 @@ router.use('/providers', providersRoutes);
 router.use('/bookings', bookingsRoutes);
 router.use('/chat', chatRoutes);
 router.use('/notifications', notificationsRoutes);
+router.use('/payments', paymentsRoutes);
+router.use('/reviews', reviewsRoutes);
 
 // Health check — quick way to check if API is running
 router.get('/health', (req, res) => {
