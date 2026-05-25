@@ -1,0 +1,357 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// PRISMA SCHEMA — 7StarExperts
+// ─────────────────────────────────────────────────────────────────────────────
+// 📘 What is Prisma?
+// Prisma is an ORM (Object Relational Mapper).
+// Instead of writing raw SQL like: SELECT * FROM users WHERE id = 1
+// You write JavaScript like:        prisma.user.findUnique({ where: { id: 1 } })
+// Prisma converts it to SQL for you!
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL") // reads from your .env file
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENUMS — predefined list of allowed values for a field
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum Role {
+  CUSTOMER   // person booking services
+  PROVIDER   // service professional
+  ADMIN      // platform admin
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum BookingStatus {
+  PENDING       // customer placed booking, waiting for provider
+  ACCEPTED      // provider accepted the booking
+  REJECTED      // provider rejected the booking
+  EN_ROUTE      // provider is on the way
+  IN_PROGRESS   // service is currently being done
+  COMPLETED     // service done successfully
+  CANCELLED     // cancelled by customer or provider
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CARD
+  UPI
+  WALLET
+  CASH
+  NET_BANKING
+}
+
+enum ProviderStatus {
+  PENDING      // just registered, documents not verified
+  VERIFIED     // admin approved the provider
+  REJECTED     // admin rejected the provider
+  SUSPENDED    // banned from platform
+}
+
+enum NotificationType {
+  BOOKING_REQUEST
+  BOOKING_ACCEPTED
+  BOOKING_REJECTED
+  BOOKING_COMPLETED
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  CHAT_MESSAGE
+  SYSTEM
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// USER — base table for ALL users (customers, providers, admins)
+// ─────────────────────────────────────────────────────────────────────────────
+model User {
+  id          String    @id @default(uuid())   // unique ID for each user (UUID format)
+  name        String
+  phone       String    @unique               // must be unique — used for OTP login
+  email       String?   @unique               // optional but unique if provided
+  password    String?                         // null for phone-only users
+  avatar      String?                         // URL to profile picture on Cloudinary
+  gender      Gender?
+  role        Role      @default(CUSTOMER)
+  isActive    Boolean   @default(true)        // soft delete — deactivate instead of delete
+  fcmToken    String?                         // Firebase Cloud Messaging token for push notifications
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  provider        Provider?       // if this user is a provider, this links to Provider profile
+  addresses       Address[]       // a user can have multiple saved addresses
+  bookingsAsCustomer Booking[]    @relation("CustomerBookings")
+  reviewsGiven    Review[]        @relation("ReviewsGiven")
+  reviewsReceived Review[]        @relation("ReviewsReceived")
+  sentMessages    Message[]       @relation("SentMessages")
+  notifications   Notification[]
+  otps            Otp[]
+
+  @@map("users")  // actual table name in PostgreSQL will be "users"
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OTP — stores OTP codes for phone verification
+// ─────────────────────────────────────────────────────────────────────────────
+model Otp {
+  id        String   @id @default(uuid())
+  phone     String
+  code      String              // the 6-digit OTP
+  expiresAt DateTime            // OTP is only valid for X minutes
+  isUsed    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [phone], references: [phone])
+
+  @@map("otps")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROVIDER — extra profile info for service professionals
+// ─────────────────────────────────────────────────────────────────────────────
+model Provider {
+  id              String         @id @default(uuid())
+  userId          String         @unique   // one-to-one with User
+  bio             String?                  // about the provider
+  experience      Int?                     // years of experience
+  status          ProviderStatus @default(PENDING)
+  rating          Float          @default(0.0)
+  totalReviews    Int            @default(0)
+  totalEarnings   Float          @default(0.0)
+  walletBalance   Float          @default(0.0)
+  isAvailable     Boolean        @default(false)  // toggles availability
+  currentLat      Float?                           // live GPS latitude
+  currentLng      Float?                           // live GPS longitude
+  documents       Json?                            // verification docs (Aadhar, PAN etc.) as JSON
+  bankDetails     Json?                            // bank account for payouts
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  // Relations
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  services        ProviderService[]    // which services this provider offers
+  bookings        Booking[]            @relation("ProviderBookings")
+  availability    ProviderAvailability[]
+
+  @@map("providers")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROVIDER AVAILABILITY — working hours for each day
+// ─────────────────────────────────────────────────────────────────────────────
+model ProviderAvailability {
+  id          String   @id @default(uuid())
+  providerId  String
+  dayOfWeek   Int      // 0 = Sunday, 1 = Monday ... 6 = Saturday
+  startTime   String   // "09:00"
+  endTime     String   // "18:00"
+  isOff       Boolean  @default(false)
+
+  provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@map("provider_availability")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CATEGORY — top-level service categories (Cleaning, Plumbing, Beauty, etc.)
+// ─────────────────────────────────────────────────────────────────────────────
+model Category {
+  id          String     @id @default(uuid())
+  name        String     @unique
+  icon        String?    // URL to category icon image
+  description String?
+  isActive    Boolean    @default(true)
+  sortOrder   Int        @default(0)     // controls display order in app
+  createdAt   DateTime   @default(now())
+
+  // Relations
+  services    Service[]  // a category has many services
+
+  @@map("categories")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SERVICE — specific services under a category (e.g. "Full Home Cleaning")
+// ─────────────────────────────────────────────────────────────────────────────
+model Service {
+  id            String   @id @default(uuid())
+  categoryId    String
+  name          String
+  description   String?
+  image         String?   // service image URL
+  basePrice     Float     // starting price shown to customer
+  duration      Int       // duration in minutes
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  category      Category         @relation(fields: [categoryId], references: [id])
+  providers     ProviderService[]  // which providers offer this service
+  bookings      Booking[]
+
+  @@map("services")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PROVIDER SERVICE — junction table: which provider offers which service + their price
+// ─────────────────────────────────────────────────────────────────────────────
+model ProviderService {
+  id          String   @id @default(uuid())
+  providerId  String
+  serviceId   String
+  price       Float    // provider's own price (may differ from base price)
+  isActive    Boolean  @default(true)
+
+  provider    Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, serviceId])  // prevent duplicate entries
+  @@map("provider_services")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADDRESS — saved addresses for customers
+// ─────────────────────────────────────────────────────────────────────────────
+model Address {
+  id          String   @id @default(uuid())
+  userId      String
+  label       String   // "Home", "Office", "Other"
+  fullAddress String   // "123 Main Street, Mumbai, Maharashtra 400001"
+  landmark    String?
+  lat         Float    // latitude (GPS coordinate)
+  lng         Float    // longitude (GPS coordinate)
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookings    Booking[]
+
+  @@map("addresses")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BOOKING — the core table! Each service booking lives here
+// ─────────────────────────────────────────────────────────────────────────────
+model Booking {
+  id              String        @id @default(uuid())
+  customerId      String
+  providerId      String?       // null until a provider accepts
+  serviceId       String
+  addressId       String
+  status          BookingStatus @default(PENDING)
+  scheduledAt     DateTime      // when the service is booked for
+  startedAt       DateTime?     // when provider actually started
+  completedAt     DateTime?     // when service was completed
+  totalAmount     Float
+  platformFee     Float         @default(0)  // commission 7StarExperts keeps
+  providerEarning Float         @default(0)  // what provider gets
+  notes           String?       // customer's special instructions
+  cancellationReason String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // Relations
+  customer    User        @relation("CustomerBookings", fields: [customerId], references: [id])
+  provider    Provider?   @relation("ProviderBookings", fields: [providerId], references: [id])
+  service     Service     @relation(fields: [serviceId], references: [id])
+  address     Address     @relation(fields: [addressId], references: [id])
+  payment     Payment?    // one booking has one payment
+  review      Review?     // one booking has one review
+  messages    Message[]   // all chat messages for this booking
+
+  @@map("bookings")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PAYMENT — payment record for each booking
+// ─────────────────────────────────────────────────────────────────────────────
+model Payment {
+  id              String        @id @default(uuid())
+  bookingId       String        @unique  // one payment per booking
+  amount          Float
+  method          PaymentMethod
+  status          PaymentStatus @default(PENDING)
+  transactionId   String?       // ID from Razorpay/Stripe
+  razorpayOrderId String?       // Razorpay order ID
+  razorpayPaymentId String?     // Razorpay payment ID
+  refundId        String?       // if refunded
+  refundAmount    Float?
+  paidAt          DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  booking         Booking       @relation(fields: [bookingId], references: [id])
+
+  @@map("payments")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REVIEW — ratings & reviews after a booking is completed
+// ─────────────────────────────────────────────────────────────────────────────
+model Review {
+  id          String   @id @default(uuid())
+  bookingId   String   @unique  // one review per booking
+  fromUserId  String   // who wrote the review
+  toUserId    String   // who received the review
+  rating      Int      // 1 to 5
+  comment     String?
+  createdAt   DateTime @default(now())
+
+  booking     Booking  @relation(fields: [bookingId], references: [id])
+  fromUser    User     @relation("ReviewsGiven", fields: [fromUserId], references: [id])
+  toUser      User     @relation("ReviewsReceived", fields: [toUserId], references: [id])
+
+  @@map("reviews")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MESSAGE — in-app chat between customer and provider per booking
+// ─────────────────────────────────────────────────────────────────────────────
+model Message {
+  id          String   @id @default(uuid())
+  bookingId   String
+  senderId    String
+  content     String
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  booking     Booking  @relation(fields: [bookingId], references: [id])
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id])
+
+  @@map("messages")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NOTIFICATION — push + in-app notifications
+// ─────────────────────────────────────────────────────────────────────────────
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  title     String
+  body      String
+  type      NotificationType
+  data      Json?            // extra data (e.g. bookingId to navigate on tap)
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
