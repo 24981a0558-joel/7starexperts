@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { asyncHandler } from '../../middleware/error.middleware';
 import { AuthRequest } from '../../middleware/auth.middleware';
 import { sendSuccess, sendPaginated } from '../../utils/response.util';
+import { logActivity } from '../../utils/activity-log.util';
 import providersService from './providers.service';
 
 // GET /api/providers/me — provider sees own profile
@@ -69,10 +70,22 @@ export const getProviderPublicProfile = asyncHandler(async (req: Request, res: R
 // PATCH /api/providers/:id/status — admin: verify/reject/suspend provider
 export const updateProviderStatus = asyncHandler(async (req: AuthRequest, res: Response) => {
   const { status } = req.body;
-  const result = await providersService.updateProviderStatus(
-    req.params['id'] as string,
-    status
-  );
+  const id = req.params['id'] as string;
+  const result = await providersService.updateProviderStatus(id, status);
+
+  const action = status === 'VERIFIED'  ? 'APPROVE'
+               : status === 'REJECTED'  ? 'REJECT'
+               : status === 'SUSPENDED' ? 'SUSPEND'
+               : 'UPDATE';
+
+  await logActivity(req, {
+    action,
+    entity: 'Provider',
+    entityId: id,
+    entityName: (result as any).user?.name ?? id,
+    changes: { status },
+  });
+
   return sendSuccess(res, result, `Provider status updated to ${status}`);
 });
 

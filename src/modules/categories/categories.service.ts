@@ -13,18 +13,19 @@ import { AppError } from '../../middleware/error.middleware';
 
 export class CategoriesService {
   // ── Get all active categories (for the home screen grid) ─────────────────
-  async getAllCategories() {
+  async getAllCategories(showAll = false) {
     return prisma.category.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: 'asc' },  // respect the sort order set by admin
+      where: showAll ? undefined : { isActive: true },
+      orderBy: { sortOrder: 'asc' },
       select: {
         id: true,
         name: true,
         icon: true,
         description: true,
+        isActive: true,
         sortOrder: true,
         _count: {
-          select: { services: true }, // include count of services in each category
+          select: { services: true },
         },
       },
     });

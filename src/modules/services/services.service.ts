@@ -20,13 +20,14 @@ export class ServicesService {
     category?: string;
     page: number;
     limit: number;
+    showAll?: boolean; // admin-only: include inactive/suspended services
   }) {
-    const { category, page, limit } = query;
+    const { category, page, limit, showAll } = query;
     const skip = (page - 1) * limit; // pagination offset
     // e.g. page=2, limit=10 → skip first 10, get next 10
 
     const where = {
-      isActive: true,
+      ...(!showAll && { isActive: true }), // customers only see active; admin sees all
       ...(category && { categoryId: category }),
     };
 

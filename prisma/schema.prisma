@@ -13,8 +13,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL") // reads from your .env file
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")       // pooler URL  — used by the app at runtime
+  directUrl = env("DIRECT_URL")         // direct URL  — used by prisma migrate / prisma db push
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -101,9 +102,30 @@ model User {
   reviewsReceived Review[]        @relation("ReviewsReceived")
   sentMessages    Message[]       @relation("SentMessages")
   notifications   Notification[]
-  otps            Otp[]
 
   @@map("users")  // actual table name in PostgreSQL will be "users"
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// ACTIVITY LOG — tracks every admin action (who changed what, when)
+// ─────────────────────────────────────────────────────────────────────────────
+model ActivityLog {
+  id          String   @id @default(uuid())
+  adminId     String?                      // which admin did this
+  adminName   String?                      // their name (stored so log stays readable even if user deleted)
+  action      String                       // CREATE | UPDATE | DELETE | SUSPEND | ACTIVATE | APPROVE | REJECT
+  entity      String                       // Service | Category | Provider | User | Booking
+  entityId    String?                      // ID of the affected record
+  entityName  String?                      // human-readable label e.g. "Deep Cleaning"
+  changes     Json?                        // optional before/after snapshot
+  ip          String?                      // request IP address
+  createdAt   DateTime @default(now())
+
+  @@index([entity])
+  @@index([adminId])
+  @@index([createdAt(sort: Desc)])
+  @@map("activity_logs")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -117,7 +139,7 @@ model Otp {
   isUsed    Boolean  @default(false)
   createdAt DateTime @default(now())
 
-  user      User?    @relation(fields: [phone], references: [phone])
+  // No foreign key to User — OTPs are used for registration (user may not exist yet)
 
   @@map("otps")
 }

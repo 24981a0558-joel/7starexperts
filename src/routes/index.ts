@@ -17,6 +17,7 @@ import chatRoutes from '../modules/chat/chat.routes';
 import notificationsRoutes from '../modules/notifications/notifications.routes';
 import paymentsRoutes from '../modules/payments/payments.routes';
 import reviewsRoutes from '../modules/reviews/reviews.routes';
+import logsRoutes from '../modules/logs/logs.routes';
 
 const router = Router();
 
@@ -42,6 +43,7 @@ router.use('/chat', chatRoutes);
 router.use('/notifications', notificationsRoutes);
 router.use('/payments', paymentsRoutes);
 router.use('/reviews', reviewsRoutes);
+router.use('/logs', logsRoutes);
 
 // Health check — quick way to check if API is running
 router.get('/health', (req, res) => {

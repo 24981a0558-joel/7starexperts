@@ -17,9 +17,9 @@ export const sendOtpSchema = Joi.object({
 export const verifyOtpSchema = Joi.object({
   phone: schemas.phone!.required(),
   otp: schemas.otp!.required(),
-  role: Joi.string().valid('CUSTOMER', 'PROVIDER').default('CUSTOMER'),
+  role: Joi.string().valid('CUSTOMER', 'PROVIDER', 'ADMIN').default('CUSTOMER'),
   // role is optional — if not provided, defaults to CUSTOMER
-  // This lets providers register by passing role: "PROVIDER"
+  // PROVIDER = service professionals, ADMIN = admin panel access
 });
 
 // POST /auth/refresh-token

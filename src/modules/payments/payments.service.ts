@@ -83,7 +83,7 @@ export class PaymentsService {
         customerId,
         serviceName: booking.service.name,
       },
-      payment_capture: 1,  // auto-capture payment (don't hold, charge immediately)
+      payment_capture: true,  // auto-capture payment (don't hold, charge immediately)
     });
 
     // 3. Save pending payment in DB
