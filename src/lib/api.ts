@@ -17,7 +17,7 @@ import axios from 'axios';
 import Cookies from 'js-cookie';
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api',
+  baseURL: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5001/api',
   timeout: 15000, // 15 second timeout — fail fast if server is down
   headers: { 'Content-Type': 'application/json' },
 });
@@ -97,7 +97,7 @@ export const providersApi = {
 // Services
 export const servicesApi = {
   getAll: (params?: Record<string, any>) => api.get('/services', { params }),
-  getCategories: () => api.get('/categories'),
+  getCategories: (params?: Record<string, any>) => api.get('/categories', { params }),
   createService: (data: any) => api.post('/services', data),
   updateService: (id: string, data: any) => api.put(`/services/${id}`, data),
   deleteService: (id: string) => api.delete(`/services/${id}`),
@@ -116,4 +116,10 @@ export const paymentsApi = {
 export const reviewsApi = {
   getAll: (params?: Record<string, any>) => api.get('/reviews', { params }),
   delete: (id: string) => api.delete(`/reviews/${id}`),
+};
+
+
+// Activity Logs
+export const logsApi = {
+  getAll: (params?: Record<string, any>) => api.get('/logs', { params }),
 };

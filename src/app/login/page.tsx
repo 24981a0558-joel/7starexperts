@@ -1,9 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { useAuth } from '@/hooks/useAuth';
 import { Crown, Loader2 } from 'lucide-react';
+
+// Fixed star positions — computed once, same on server & client (no hydration mismatch)
+const STARS = Array.from({ length: 20 }, (_, i) => {
+  const seed = (i * 9301 + 49297) % 233280; // simple deterministic pseudo-random
+  const r = (n: number) => ((seed * (n + 1)) % 233280) / 233280;
+  return {
+    width:  r(1) * 3 + 1,
+    height: r(2) * 3 + 1,
+    top:    r(3) * 100,
+    left:   r(4) * 100,
+    delay:  r(5) * 3,
+  };
+});
 
 export default function LoginPage() {
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
@@ -40,9 +53,9 @@ export default function LoginPage() {
 
       {/* Background stars */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(20)].map((_, i) => (
+        {STARS.map((s, i) => (
           <div key={i} className="absolute rounded-full bg-white opacity-10 animate-pulse"
-            style={{ width: Math.random() * 3 + 1, height: Math.random() * 3 + 1, top: `${Math.random() * 100}%`, left: `${Math.random() * 100}%`, animationDelay: `${Math.random() * 3}s` }} />
+            style={{ width: s.width, height: s.height, top: `${s.top}%`, left: `${s.left}%`, animationDelay: `${s.delay}s` }} />
         ))}
       </div>
 

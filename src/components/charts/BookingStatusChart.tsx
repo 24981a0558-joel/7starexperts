@@ -26,7 +26,7 @@ export const BookingStatusChart = ({ stats }: { stats?: DashboardStats }) => {
             </Pie>
             <Tooltip
               contentStyle={{ background: '#1e293b', border: '1px solid #2d3f5e', borderRadius: 12, color: '#fff' }}
-              formatter={(v: number) => [v, 'bookings']}
+              formatter={(v) => [v ?? 0, 'bookings']}
             />
             <Legend iconType="circle" iconSize={8} formatter={(v) => <span style={{ color: '#94a3b8', fontSize: 12 }}>{v}</span>} />
           </PieChart>

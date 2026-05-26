@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, ShoppingBag, Users, UserCheck,
-  CreditCard, Star, LogOut, Wrench, Crown,
+  CreditCard, Star, LogOut, Wrench, Crown, ScrollText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,6 +17,7 @@ const navItems = [
   { href: '/services',  label: 'Services',   icon: Wrench },
   { href: '/payments',  label: 'Payments',   icon: CreditCard },
   { href: '/reviews',   label: 'Reviews',    icon: Star },
+  { href: '/logs',      label: 'Audit Logs', icon: ScrollText },
 ];
 
 export const Sidebar = () => {

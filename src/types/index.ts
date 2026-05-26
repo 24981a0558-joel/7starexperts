@@ -153,3 +153,16 @@ export interface DashboardStats {
   cancelled: number;
   totalRevenue: number;
 }
+
+export interface ActivityLog {
+  id:         string;
+  adminId:    string | null;
+  adminName:  string | null;
+  action:     string;
+  entity:     string;
+  entityId:   string | null;
+  entityName: string | null;
+  changes:    Record<string, any> | null;
+  ip:         string | null;
+  createdAt:  string;
+}
