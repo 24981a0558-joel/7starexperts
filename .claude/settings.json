@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run dev)",
+      "Bash(npm run build)",
+      "Bash(npx prisma migrate dev*)",
+      "Bash(npx prisma studio)",
+      "Bash(npx prisma db push)",
+      "Bash(npx prisma generate)",
+      "Bash(kill -9 $(lsof -ti :5001))"
+    ]
+  }
+}
