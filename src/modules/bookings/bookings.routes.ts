@@ -35,8 +35,8 @@ router.get('/admin/all', restrictTo('ADMIN'), getAllBookings);
 router.get('/admin/stats', restrictTo('ADMIN'), getBookingStats);
 
 // ── Customer + Provider routes ────────────────────────────────────────────────
-// Customer creates booking
-router.post('/', restrictTo('CUSTOMER'), validate(createBookingSchema), createBooking);
+// Customer (or ADMIN testing the app) creates booking
+router.post('/', restrictTo('CUSTOMER', 'ADMIN'), validate(createBookingSchema), createBooking);
 
 // Both customer and provider can see their own bookings
 router.get('/', getMyBookings);

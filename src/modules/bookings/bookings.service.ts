@@ -32,7 +32,8 @@ export class BookingsService {
   async createBooking(customerId: string, data: {
     serviceId: string;
     providerId?: string;
-    addressId: string;
+    addressId?: string;
+    address?: string;  // plain text address (auto-creates address record)
     scheduledAt: Date;
     notes?: string;
   }) {
@@ -42,11 +43,32 @@ export class BookingsService {
     });
     if (!service) throw new AppError('Service not found or unavailable', 404);
 
-    // 2. Verify the address belongs to this customer
-    const address = await prisma.address.findFirst({
-      where: { id: data.addressId, userId: customerId },
-    });
-    if (!address) throw new AppError('Address not found', 404);
+    // 2. Resolve the address (either existing addressId or plain text)
+    let resolvedAddressId: string;
+
+    if (data.addressId) {
+      // Use existing saved address
+      const address = await prisma.address.findFirst({
+        where: { id: data.addressId, userId: customerId },
+      });
+      if (!address) throw new AppError('Address not found', 404);
+      resolvedAddressId = address.id;
+    } else if (data.address) {
+      // Auto-create a new address from plain text
+      const newAddress = await prisma.address.create({
+        data: {
+          userId: customerId,
+          label: 'Service Address',
+          fullAddress: data.address,
+          lat: 0,
+          lng: 0,
+          isDefault: false,
+        },
+      });
+      resolvedAddressId = newAddress.id;
+    } else {
+      throw new AppError('Address is required', 400);
+    }
 
     // 3. If provider specified, verify they offer this service
     let providerId = data.providerId;
@@ -74,7 +96,7 @@ export class BookingsService {
         customerId,
         providerId: data.providerId ?? null,
         serviceId: data.serviceId,
-        addressId: data.addressId,
+        addressId: resolvedAddressId,
         scheduledAt: data.scheduledAt,
         notes: data.notes,
         totalAmount,
@@ -119,7 +141,7 @@ export class BookingsService {
     // Different where clause based on role
     const where: any = {
       ...(status && { status }),
-      ...(role === 'CUSTOMER' && { customerId: userId }),
+      ...((role === 'CUSTOMER' || role === 'ADMIN') && { customerId: userId }),
       ...(role === 'PROVIDER' && {
         provider: { userId }, // join through provider to match userId
       }),

@@ -49,10 +49,10 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // Stricter rate limit for OTP (prevent SMS bombing)
-// Max 5 OTP requests per hour per IP
+// Dev: unlimited | Production: max 5 per hour per IP
 const otpLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5,
+  max: env.isDev ? 1000 : 5, // effectively unlimited in dev
   message: {
     success: false,
     message: 'Too many OTP requests. Please try again after 1 hour.',
