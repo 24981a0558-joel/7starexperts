@@ -1,16 +1,44 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+// ─────────────────────────────────────────────────────────────────────────────
+// ROOT LAYOUT — 7StarExperts Customer App
+// ─────────────────────────────────────────────────────────────────────────────
+
+import { Stack } from 'expo-router';
 import React from 'react';
-import { useColorScheme } from 'react-native';
+import { StatusBar } from 'react-native';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import { AuthProvider } from '@/context/auth-context';
+import { Colors } from '@/constants/colors';
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+export default function RootLayout() {
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <AuthProvider>
+      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: Colors.background },
+        }}>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        {/* Service detail — custom back button in screen, no nav header */}
+        <Stack.Screen
+          name="service/[id]"
+          options={{ headerShown: false }}
+        />
+        {/* Booking — show header with back button */}
+        <Stack.Screen
+          name="booking/new"
+          options={{
+            headerShown: true,
+            headerTitle: 'Book Service',
+            headerBackTitle: 'Back',
+            headerTintColor: Colors.textPrimary,
+            headerStyle: { backgroundColor: Colors.background },
+            headerShadowVisible: false,
+          }}
+        />
+      </Stack>
+    </AuthProvider>
   );
 }
