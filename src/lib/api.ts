@@ -38,37 +38,43 @@ export interface ProviderProfile {
   rating: number;
   totalReviews: number;
   totalEarnings: number;
+  totalJobs?: number;
   walletBalance: number;
   isAvailable: boolean;
   user: User;
   services?: Array<{ id: string; service: { id: string; name: string }; price: number }>;
 }
 
+export type BookingStatus =
+  | 'PENDING' | 'ACCEPTED' | 'EN_ROUTE' | 'IN_PROGRESS'
+  | 'COMPLETED' | 'CANCELLED' | 'REJECTED';
+
 export interface Booking {
   id: string;
-  status: string;
+  status: BookingStatus;
   scheduledAt: string;
   notes: string | null;
   totalAmount: number;
   providerEarning: number;
   cancellationReason: string | null;
-  service: { id: string; name: string; duration: number; image: string | null };
+  service: { id: string; name: string; duration: number; price?: number; image: string | null };
   customer: { id: string; name: string | null; phone: string };
   address: { fullAddress: string; lat: number; lng: number } | null;
   createdAt: string;
 }
 
-export interface WalletData {
+export interface WalletInfo {
   balance: number;
-  totalEarnings: number;
-  transactions: Array<{
-    id: string; type: string; amount: number; description: string; createdAt: string;
-  }>;
+  totalEarned: number;
+  totalPaid: number;
 }
 
-export interface EarningsStats {
-  today: number; thisWeek: number; thisMonth: number; total: number;
-  completedBookings: number;
+export interface EarningEntry {
+  id: string;
+  type: 'CREDIT' | 'DEBIT';
+  amount: number;
+  description: string;
+  createdAt: string;
 }
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
@@ -98,10 +104,10 @@ export const providerApi = {
     patch<{ success: boolean; data: { isAvailable: boolean } }>('/providers/me/toggle', { isAvailable }),
 
   getWallet: () =>
-    get<{ success: boolean; data: WalletData }>('/providers/me/wallet'),
+    get<{ success: boolean; data: WalletInfo }>('/providers/me/wallet'),
 
   getEarnings: () =>
-    get<{ success: boolean; data: EarningsStats }>('/providers/me/earnings'),
+    get<{ success: boolean; data: EarningEntry[] }>('/providers/me/earnings'),
 
   requestPayout: (amount: number) =>
     post<{ success: boolean; data: { message: string } }>('/providers/me/payout', { amount }),
@@ -110,13 +116,17 @@ export const providerApi = {
 // ── Bookings ──────────────────────────────────────────────────────────────────
 
 export const bookingsApi = {
+  getMine: (params?: { status?: string; page?: number; limit?: number }) =>
+    get<{ success: boolean; data: Booking[] }>('/bookings', params),
+
+  /** @deprecated use getMine */
   getMyBookings: (params?: { status?: string; page?: number; limit?: number }) =>
     get<{ success: boolean; data: Booking[] }>('/bookings', params),
 
   getById: (id: string) =>
     get<{ success: boolean; data: Booking }>(`/bookings/${id}`),
 
-  updateStatus: (id: string, status: string, cancellationReason?: string) =>
+  updateStatus: (id: string, status: BookingStatus, cancellationReason?: string) =>
     patch<{ success: boolean; data: Booking }>(`/bookings/${id}/status`, {
       status,
       ...(cancellationReason ? { cancellationReason } : {}),

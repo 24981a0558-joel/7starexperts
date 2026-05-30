@@ -6,21 +6,21 @@ const TOKEN_KEY = 'worker_auth_token';
 
 interface AuthContextValue {
   user: User | null;
-  provider: ProviderProfile | null;
+  providerProfile: ProviderProfile | null;
   token: string | null;
-  isLoading: boolean;
+  loading: boolean;
   login: (token: string, user: User) => Promise<void>;
   logout: () => Promise<void>;
-  refreshProvider: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [provider, setProvider] = useState<ProviderProfile | null>(null);
+  const [providerProfile, setProviderProfile] = useState<ProviderProfile | null>(null);
   const [token, setToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
@@ -33,14 +33,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             providerApi.getMyProfile().catch(() => null),
           ]);
           setUser(meRes.data);
-          if (profileRes) setProvider(profileRes.data);
+          if (profileRes) setProviderProfile(profileRes.data);
           setToken(saved);
         }
       } catch {
         await SecureStore.deleteItemAsync(TOKEN_KEY);
         setAuthToken(null);
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     })();
   }, []);
@@ -50,11 +50,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthToken(newToken);
     setToken(newToken);
     setUser(newUser);
-    // Load provider profile
     try {
       const res = await providerApi.getMyProfile();
-      setProvider(res.data);
-    } catch { /* new provider — profile not created yet */ }
+      setProviderProfile(res.data);
+    } catch { /* new provider — profile not yet created */ }
   }, []);
 
   const logout = useCallback(async () => {
@@ -62,18 +61,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthToken(null);
     setToken(null);
     setUser(null);
-    setProvider(null);
+    setProviderProfile(null);
   }, []);
 
-  const refreshProvider = useCallback(async () => {
+  const refreshProfile = useCallback(async () => {
     try {
       const res = await providerApi.getMyProfile();
-      setProvider(res.data);
+      setProviderProfile(res.data);
     } catch { /* silent */ }
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, provider, token, isLoading, login, logout, refreshProvider }}>
+    <AuthContext.Provider value={{ user, providerProfile, token, loading, login, logout, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

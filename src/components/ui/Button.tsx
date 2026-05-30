@@ -1,24 +1,66 @@
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, TouchableOpacityProps, ViewStyle } from 'react-native';
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableOpacityProps,
+  View,
+  ViewStyle,
+} from 'react-native';
 import { Colors } from '@/constants/colors';
 
 interface ButtonProps extends TouchableOpacityProps {
-  title: string;
+  label?: string;
+  /** @deprecated use label */
+  title?: string;
   variant?: 'primary' | 'outline' | 'danger' | 'ghost' | 'warning';
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   fullWidth?: boolean;
+  icon?: React.ReactNode;
   style?: ViewStyle;
 }
 
-export function Button({ title, variant = 'primary', size = 'md', loading, fullWidth, style, disabled, ...rest }: ButtonProps) {
+export function Button({
+  label,
+  title,
+  variant = 'primary',
+  size = 'md',
+  loading,
+  fullWidth,
+  icon,
+  style,
+  disabled,
+  ...rest
+}: ButtonProps) {
+  const text = label ?? title ?? '';
+  const isOutlineish = variant === 'outline' || variant === 'ghost';
+
   return (
     <TouchableOpacity
-      style={[styles.base, styles[variant], styles[`sz_${size}`], fullWidth && styles.full, (disabled || loading) && styles.disabled, style]}
-      disabled={disabled || loading} activeOpacity={0.75} {...rest}>
-      {loading
-        ? <ActivityIndicator size="small" color={variant === 'outline' || variant === 'ghost' ? Colors.primary : '#fff'} />
-        : <Text style={[styles.text, styles[`t_${variant}`], styles[`ts_${size}`]]}>{title}</Text>}
+      style={[
+        styles.base,
+        styles[variant],
+        styles[`sz_${size}` as keyof typeof styles],
+        fullWidth && styles.full,
+        (disabled || loading) && styles.disabled,
+        style,
+      ]}
+      disabled={disabled || loading}
+      activeOpacity={0.75}
+      {...rest}
+    >
+      {loading ? (
+        <ActivityIndicator size="small" color={isOutlineish ? Colors.primary : '#fff'} />
+      ) : (
+        <View style={styles.inner}>
+          {icon && <View style={styles.iconWrap}>{icon}</View>}
+          <Text style={[styles.text, styles[`t_${variant}` as keyof typeof styles], styles[`ts_${size}` as keyof typeof styles]]}>
+            {text}
+          </Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
 }
@@ -35,6 +77,8 @@ const styles = StyleSheet.create({
   sz_sm: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
   sz_md: { paddingHorizontal: 24, paddingVertical: 14 },
   sz_lg: { paddingHorizontal: 32, paddingVertical: 18, borderRadius: 14 },
+  inner: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  iconWrap: {},
   text: { fontWeight: '600' },
   t_primary: { color: '#fff' },
   t_outline: { color: Colors.primary },

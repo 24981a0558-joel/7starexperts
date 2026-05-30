@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { getStatusColor, getStatusLabel } from '@/constants/colors';
 
-export function Badge({ status, size = 'md' }: { status: string; size?: 'sm' | 'md' }) {
+export function Badge({ status, size = 'md' }: { status: string; size?: 'sm' | 'md' | 'lg' }) {
   const { text, bg } = getStatusColor(status);
   return (
     <View style={[styles.badge, { backgroundColor: bg }, size === 'sm' && styles.sm]}>
